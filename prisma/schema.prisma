@@ -1,15 +1,71 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  sessions        Session[]
+  participations  SessionParticipant[]
+  chatMessages    ChatMessage[]
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  title       String?
+  language    String   @default("javascript")
+  mode        String   @default("pair-programming") // interview, teaching, pair-programming
+  code        String   @default("")
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime?
+  isPublic    Boolean  @default(true)
+  
+  participants SessionParticipant[]
+  recordings   Recording[]
+  chatMessages ChatMessage[]
+}
+
+model SessionParticipant {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  role      String   @default("collaborator") // owner, collaborator, viewer
+  name      String   // For guest users
+  color     String   // Cursor color
+  joinedAt  DateTime @default(now())
+  
+  @@unique([sessionId, userId])
+}
+
+model Recording {
+  id             String   @id @default(cuid())
+  sessionId      String
+  session        Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  recordingData  Json     // Store events as JSON
+  duration       Int      // Duration in seconds
+  createdAt      DateTime @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  message   String
+  timestamp DateTime @default(now())
+  isAI      Boolean  @default(false)
 }
